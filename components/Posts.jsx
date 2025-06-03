@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import axios from "axios";
 import { useState, useEffect } from "react";
@@ -18,13 +18,19 @@ import {
 } from "react-native-responsive-screen";
 import { baseImgURL, baseURL, baseVidUrl } from "../backend/baseData";
 import { useVideoPlayer, VideoView } from "expo-video";
+import { Toast } from "react-native-toast-message/lib/src/Toast";
+import FollowPopup from "./FollowPopup";
 import moment from "moment";
 
-const Posts = ({ item, user_id }) => {
+const Posts = ({ item, user_id, user, onFollowUpdate }) => {
   const [heartActive, setHeartActive] = useState(item.already_liked);
   const [count, setCount] = useState(parseInt(item.like_count));
   const [showFullDescription, setShowFullDescription] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showFollowPopup, setShowFollowPopup] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(item.is_following || false);
+  const [followLoading, setFollowLoading] = useState(false);
+  
   const navigation = useNavigation();
   const heartScale = new Animated.Value(1);
   
@@ -36,6 +42,49 @@ const Posts = ({ item, user_id }) => {
     item.created_at,
     "DD-MM-YYYY HH:mm:ss"
   ).fromNow();
+
+  const handleFollowPress = () => {
+    setShowFollowPopup(true);
+  };
+
+  const toggleFollow = async () => {
+    if (!user?.id) return;
+    
+    setFollowLoading(true);
+    try {
+      const response = await axios.get(
+        `${baseURL}/event-Follow.php?page_id=${item.page_id}&userId=${user.id}`
+      );
+      
+      if (response.status === 200) {
+        const newFollowStatus = !isFollowing;
+        setIsFollowing(newFollowStatus);
+        
+        // Update the parent component about the follow status change
+        if (onFollowUpdate) {
+          onFollowUpdate(item.page_id, newFollowStatus);
+        }
+        
+        Toast.show({
+          type: "success",
+          text1: newFollowStatus ? "Followed!" : "Unfollowed!",
+          text2: newFollowStatus 
+            ? `You are now following ${item.page_title}` 
+            : `You unfollowed ${item.page_title}`,
+        });
+      }
+    } catch (error) {
+      console.error("Error while following:", error);
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Could not update follow status. Please try again.",
+      });
+    } finally {
+      setFollowLoading(false);
+      setShowFollowPopup(false);
+    }
+  };
 
   const handleHeart = async () => {
     // Animate heart button
@@ -88,6 +137,12 @@ const Posts = ({ item, user_id }) => {
     return `${text.slice(0, limit).trim()}...`;
   };
 
+  const pageData = {
+    title: item.page_title,
+    icon: item.page_icon,
+    type: item.page_type || 'Page'
+  };
+
   return (
     <View style={styles.mainCard}>
       {/* Header section with profile and metadata */}
@@ -102,7 +157,38 @@ const Posts = ({ item, user_id }) => {
           />
           <View style={styles.headerTextContainer}>
             <Text style={styles.profileName}>{truncateText(item.page_title, 20)}</Text>
-            <Text style={styles.timeText}>{formattedDate}</Text>
+            <View style={styles.metadataRow}>
+              <Text style={styles.timeText}>{formattedDate}</Text>
+              {/* Status indicators */}
+              <View style={styles.statusContainer}>
+                {item.is_now && (
+                  <View style={styles.nowBadge}>
+                    <MaterialIcons name="location-on" size={10} color="white" />
+                    <Text style={styles.nowText}>Now</Text>
+                  </View>
+                )}
+                
+                {isFollowing ? (
+                  <TouchableOpacity 
+                    style={styles.followingBadge}
+                    onPress={handleFollowPress}
+                    activeOpacity={0.8}
+                  >
+                    <MaterialIcons name="check-circle" size={10} color="white" />
+                    <Text style={styles.followingText}>Following</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity 
+                    style={styles.followBadge}
+                    onPress={handleFollowPress}
+                    activeOpacity={0.8}
+                  >
+                    <MaterialIcons name="add-circle-outline" size={10} color="#4ECDC4" />
+                    <Text style={styles.followText}>Follow</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
           </View>
         </TouchableOpacity>
         
@@ -245,13 +331,18 @@ const Posts = ({ item, user_id }) => {
             <Ionicons name="chatbubble-outline" size={22} color="#333" />
             <Text style={styles.actionText}>Comment</Text>
           </TouchableOpacity>
-
-          {/* <TouchableOpacity style={styles.actionButton} activeOpacity={0.7}>
-            <Ionicons name="share-social-outline" size={22} color="#333" />
-            <Text style={styles.actionText}>Share</Text>
-          </TouchableOpacity> */}
         </View>
       </View>
+
+      {/* Follow Popup */}
+      <FollowPopup
+        visible={showFollowPopup}
+        onClose={() => setShowFollowPopup(false)}
+        onConfirm={toggleFollow}
+        pageData={pageData}
+        isFollowing={isFollowing}
+        loading={followLoading}
+      />
     </View>
   );
 };
@@ -283,24 +374,96 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   profileImage: {
-    height: wp(10),
-    width: wp(10),
-    borderRadius: wp(5),
-    backgroundColor: "#f0f0f0"
+    height: wp(12),
+    width: wp(12),
+    borderRadius: wp(6),
+    backgroundColor: "#f0f0f0",
+    borderWidth: 2,
+    borderColor: "#e0e0e0",
   },
   headerTextContainer: {
-    marginLeft: wp(2.5),
+    marginLeft: wp(3),
+    flex: 1,
   },
   profileName: {
     fontFamily: "raleway-bold",
-    fontSize: hp(1.8),
+    fontSize: hp(1.9),
     color: "#111"
+  },
+  metadataRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 4,
   },
   timeText: {
     fontFamily: "raleway",
     fontSize: hp(1.4),
     color: "#888",
-    marginTop: 2
+  },
+  statusContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  nowBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FF5722",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    gap: 2,
+    shadowColor: "#FF5722",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  nowText: {
+    fontFamily: "raleway-bold",
+    fontSize: hp(1.1),
+    color: "white",
+  },
+  followingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#4CAF50",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    gap: 2,
+    shadowColor: "#4CAF50",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  followingText: {
+    fontFamily: "raleway-bold",
+    fontSize: hp(1.1),
+    color: "white",
+  },
+  followBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    borderWidth: 1,
+    borderColor: "#4ECDC4",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    gap: 2,
+    shadowColor: "#4ECDC4",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  followText: {
+    fontFamily: "raleway-bold",
+    fontSize: hp(1.1),
+    color: "#4ECDC4",
   },
   moreButton: {
     padding: 8,

@@ -46,6 +46,21 @@ const BuzzwallScreen = () => {
   const swiperRef = useRef(null);
   const [errorMsg, setErrorMsg] = useState(null);
 
+  // Handle follow status updates
+  const handleFollowUpdate = (pageId, isFollowing) => {
+    // Update the filterChallenges state to reflect the new follow status
+    queryClient.setQueryData(['buzzwallChallenges', user?.id, district, country], (oldData) => {
+      if (!oldData) return oldData;
+      
+      return oldData.map(item => {
+        if (item.page_id === pageId) {
+          return { ...item, is_following: isFollowing };
+        }
+        return item;
+      });
+    });
+  };
+
   // Fetch user from AsyncStorage
   useEffect(() => {
     const fetchUser = async () => {
@@ -152,18 +167,23 @@ const BuzzwallScreen = () => {
     enabled: !!(district || country)
   });
 
-  // Query for buzzwall challenges
+  // Query for buzzwall challenges - Updated to include location data
   const {
     data: filterChallenges = [],
     isLoading: challengesLoading,
     refetch: refetchChallenges
   } = useQuery({
-    queryKey: ['buzzwallChallenges', user?.id],
+    queryKey: ['buzzwallChallenges', user?.id, district, country],
     queryFn: async () => {
       if (!user?.id) return [];
       
+      // Build query parameters
+      let queryParams = `userId=${user.id}`;
+      if (district) queryParams += `&district=${encodeURIComponent(district)}`;
+      if (country) queryParams += `&country=${encodeURIComponent(country)}`;
+      
       const response = await axios.get(
-        `${baseURL}/getBuzzWall.php?userId=${user.id}`
+        `${baseURL}/getBuzzWall.php?${queryParams}`
       );
       
       return response.data;
@@ -245,7 +265,21 @@ const BuzzwallScreen = () => {
     <PaperProvider style={{ flex: 1, height: "100%", width: "100%" }}>
       <FlatList
         data={filterChallenges}
-        keyExtractor={(item, index) => `challenge-${index}`}
+        keyExtractor={(item, index) => {
+          // Create unique keys based on content type and available IDs
+          const baseKey = `${item.info_type}-${index}`;
+          
+          if (item.info_type === 'post') {
+            return `post-${item.post_id}-${item.page_id}-${index}`;
+          } else if (item.info_type === 'challenge') {
+            return `challenge-${item.challenge_id}-${item.page_id}-${index}`;
+          } else if (item.info_type === 'certificate') {
+            return `certificate-${item.people_data_id || item.id}-${item.page_id}-${index}`;
+          }
+          
+          // Fallback for any other types
+          return `${baseKey}-${item.page_id || 'unknown'}`;
+        }}
         contentContainerStyle={styles.moviesContainer}
         showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={
@@ -282,6 +316,8 @@ const BuzzwallScreen = () => {
             key={index}
             index={index}
             arena={null}
+            district={district}
+            onFollowUpdate={handleFollowUpdate}
           />
         )}
       />

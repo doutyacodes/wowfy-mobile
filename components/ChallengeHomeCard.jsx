@@ -2,18 +2,16 @@ import moment from "moment";
 import React, { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { baseURL } from "../backend/baseData";
-
 import { useNavigation } from "@react-navigation/native";
 import axios from "axios";
 import NewBuzzChallenge from "./AppComponents/NewBuzzChallenge";
 import CertificateList from "./CertificateList";
 import Posts from "./Posts";
 
-const ChallengeHomeCard = ({ challenge, index, user, arena, district }) => {
+const ChallengeHomeCard = ({ challenge, index, user, arena, district, onFollowUpdate }) => {
   const [selectedMovie, setSelectedMovie] = useState([]);
-  // alert(challenge.already_liked)
-  // console.log(challenge.page_id)
   const navigation = useNavigation();
+
   useEffect(() => {
     const fetchMovie = async () => {
       if (challenge.info_type == "challenge" || arena == "yes") {
@@ -29,7 +27,6 @@ const ChallengeHomeCard = ({ challenge, index, user, arena, district }) => {
 
           if (response.status == 200) {
             setSelectedMovie(response.data);
-            // console.log(response.data);
           } else {
             console.error("Failed to fetch movie");
           }
@@ -40,11 +37,12 @@ const ChallengeHomeCard = ({ challenge, index, user, arena, district }) => {
     };
 
     fetchMovie();
-  }, [user]);
+  }, [user, challenge.page_id]);
 
   if (challenge.completed == "true") {
-    return;
+    return null;
   }
+
   let formattedEndDate;
   let formattedDate;
 
@@ -68,7 +66,7 @@ const ChallengeHomeCard = ({ challenge, index, user, arena, district }) => {
       formattedEndDate = duration.minutes() + " minutes";
     }
   }
-  // alert(challenge.user_referral_count)
+
   return (
     <View key={index}>
       {challenge.info_type == "challenge" || arena == "yes" ? (
@@ -76,15 +74,24 @@ const ChallengeHomeCard = ({ challenge, index, user, arena, district }) => {
           challenge={challenge}
           formattedDate={formattedDate}
           formattedEndDate={formattedEndDate}
+          user={user}
+          onFollowUpdate={onFollowUpdate}
         />
       ) : challenge.info_type == "post" ? (
-        <Posts item={challenge} user_id={user?.id} />
+        <Posts 
+          item={challenge} 
+          user_id={user?.id} 
+          user={user}
+          onFollowUpdate={onFollowUpdate}
+        />
       ) : (
         <CertificateList
           item={challenge}
           index={index}
           user_id={user?.id}
+          user={user}
           arena={null}
+          onFollowUpdate={onFollowUpdate}
         />
       )}
     </View>

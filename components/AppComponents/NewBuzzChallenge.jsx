@@ -1,5 +1,5 @@
 import { useNavigation } from "@react-navigation/native";
-import React from "react";
+import React, { useState } from "react";
 import { 
   Image, 
   StyleSheet, 
@@ -9,17 +9,22 @@ import {
   Pressable,
   ImageBackground
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import {
   heightPercentageToDP as hp,
   widthPercentageToDP as wp,
 } from "react-native-responsive-screen";
-import { baseImgURL } from "../../backend/baseData";
+import { baseImgURL, baseURL } from "../../backend/baseData";
 import { LinearGradient } from 'expo-linear-gradient';
 import { Toast } from "react-native-toast-message/lib/src/Toast";
+import FollowPopup from '../FollowPopup';
+import axios from 'axios';
 
-const NewBuzzChallenge = ({ challenge, formattedDate, formattedEndDate }) => {
+const NewBuzzChallenge = ({ challenge, formattedDate, formattedEndDate, user, onFollowUpdate }) => {
   const navigation = useNavigation();
+  const [showFollowPopup, setShowFollowPopup] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(challenge.is_following || false);
+  const [followLoading, setFollowLoading] = useState(false);
   
   const handleChallengePress = () => {
     if (challenge.frequency == "referral") {
@@ -45,6 +50,49 @@ const NewBuzzChallenge = ({ challenge, formattedDate, formattedEndDate }) => {
     }
   };
 
+  const handleFollowPress = () => {
+    setShowFollowPopup(true);
+  };
+
+  const toggleFollow = async () => {
+    if (!user?.id) return;
+    
+    setFollowLoading(true);
+    try {
+      const response = await axios.get(
+        `${baseURL}/event-Follow.php?page_id=${challenge.page_id}&userId=${user.id}`
+      );
+      
+      if (response.status === 200) {
+        const newFollowStatus = !isFollowing;
+        setIsFollowing(newFollowStatus);
+        
+        // Update the parent component about the follow status change
+        if (onFollowUpdate) {
+          onFollowUpdate(challenge.page_id, newFollowStatus);
+        }
+        
+        Toast.show({
+          type: "success",
+          text1: newFollowStatus ? "Followed!" : "Unfollowed!",
+          text2: newFollowStatus 
+            ? `You are now following ${challenge.page_title}` 
+            : `You unfollowed ${challenge.page_title}`,
+        });
+      }
+    } catch (error) {
+      console.error("Error while following:", error);
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Could not update follow status. Please try again.",
+      });
+    } finally {
+      setFollowLoading(false);
+      setShowFollowPopup(false);
+    }
+  };
+
   const truncateText = (text, limit) => {
     if (!text) return '';
     if (text?.length <= limit) return text;
@@ -52,8 +100,13 @@ const NewBuzzChallenge = ({ challenge, formattedDate, formattedEndDate }) => {
   };
 
   const getTimeRemainingColor = () => {
-    // This is a placeholder - you could implement logic to change color based on urgency
     return "#FF7043";
+  };
+
+  const pageData = {
+    title: challenge.page_title,
+    icon: challenge.icon,
+    type: challenge.page_type || 'Page'
   };
 
   return (
@@ -70,10 +123,41 @@ const NewBuzzChallenge = ({ challenge, formattedDate, formattedEndDate }) => {
           />
           <View style={styles.headerTextContainer}>
             <View style={styles.headerTitleRow}>
-              <Text style={styles.pageTitle}>{truncateText(challenge.page_title, 20)}</Text>
+              <Text style={styles.pageTitle}>{truncateText(challenge.page_title, 18)}</Text>
               <Text style={styles.actionText}>added a challenge</Text>
             </View>
-            <Text style={styles.dateText}>{formattedDate}</Text>
+            <View style={styles.metadataRow}>
+              <Text style={styles.dateText}>{formattedDate}</Text>
+              {/* Status indicators */}
+              <View style={styles.statusContainer}>
+                {challenge.is_now && (
+                  <View style={styles.nowBadge}>
+                    <MaterialIcons name="location-on" size={12} color="white" />
+                    <Text style={styles.nowText}>Now</Text>
+                  </View>
+                )}
+                
+                {isFollowing ? (
+                  <TouchableOpacity 
+                    style={styles.followingBadge}
+                    onPress={handleFollowPress}
+                    activeOpacity={0.8}
+                  >
+                    <MaterialIcons name="check-circle" size={12} color="white" />
+                    <Text style={styles.followingText}>Following</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity 
+                    style={styles.followBadge}
+                    onPress={handleFollowPress}
+                    activeOpacity={0.8}
+                  >
+                    <MaterialIcons name="add-circle-outline" size={12} color="#4ECDC4" />
+                    <Text style={styles.followText}>Follow</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
           </View>
         </TouchableOpacity>
         
@@ -162,6 +246,16 @@ const NewBuzzChallenge = ({ challenge, formattedDate, formattedEndDate }) => {
           <Ionicons name="chevron-forward" size={16} color="white" />
         </TouchableOpacity>
       </Pressable>
+
+      {/* Follow Popup */}
+      <FollowPopup
+        visible={showFollowPopup}
+        onClose={() => setShowFollowPopup(false)}
+        onConfirm={toggleFollow}
+        pageData={pageData}
+        isFollowing={isFollowing}
+        loading={followLoading}
+      />
     </View>
   );
 };
@@ -198,13 +292,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   profileIcon: {
-    width: wp(10),
-    height: wp(10),
-    borderRadius: wp(5),
+    width: wp(12),
+    height: wp(12),
+    borderRadius: wp(6),
     backgroundColor: "#f5f5f5",
+    borderWidth: 2,
+    borderColor: "#e0e0e0",
   },
   headerTextContainer: {
-    marginLeft: wp(2.5),
+    marginLeft: wp(3),
     flex: 1,
   },
   headerTitleRow: {
@@ -214,20 +310,89 @@ const styles = StyleSheet.create({
   },
   pageTitle: {
     fontFamily: "raleway-bold",
-    fontSize: hp(1.8),
+    fontSize: hp(1.9),
     color: "#212121",
     marginRight: 4,
   },
   actionText: {
     fontFamily: "raleway",
-    fontSize: hp(1.7),
+    fontSize: hp(1.6),
     color: "#616161",
+  },
+  metadataRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 6,
   },
   dateText: {
     fontFamily: "raleway",
     fontSize: hp(1.4),
     color: "#9E9E9E",
-    marginTop: 2,
+  },
+  statusContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  nowBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FF5722",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 3,
+    shadowColor: "#FF5722",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  nowText: {
+    fontFamily: "raleway-bold",
+    fontSize: hp(1.2),
+    color: "white",
+  },
+  followingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#4CAF50",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 3,
+    shadowColor: "#4CAF50",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  followingText: {
+    fontFamily: "raleway-bold",
+    fontSize: hp(1.2),
+    color: "white",
+  },
+  followBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    borderWidth: 1.5,
+    borderColor: "#4ECDC4",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 3,
+    shadowColor: "#4ECDC4",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  followText: {
+    fontFamily: "raleway-bold",
+    fontSize: hp(1.2),
+    color: "#4ECDC4",
   },
   referralCounter: {
     alignItems: "center",

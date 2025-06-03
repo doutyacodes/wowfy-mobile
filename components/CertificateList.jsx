@@ -15,7 +15,6 @@ import {
   Platform,
 } from "react-native";
 import AwesomeAlert from "react-native-awesome-alerts";
-import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   heightPercentageToDP as hp,
@@ -24,8 +23,9 @@ import {
 import Toast from "react-native-toast-message";
 import { baseImgURL, baseURL, baseVidUrl } from "../backend/baseData";
 import CertificateCard from "./CertificateCard";
+import FollowPopup from "./FollowPopup";
 
-const CertificateList = ({ item, user_id, singleData = null }) => {
+const CertificateList = ({ item, user_id, user, onFollowUpdate, singleData = null }) => {
   const [heartActive, setHeartActive] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
   const [count, setCount] = useState(parseInt(item.like_count || 0));
@@ -35,6 +35,9 @@ const CertificateList = ({ item, user_id, singleData = null }) => {
   const [challenge, setChallenge] = useState([]);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showFollowPopup, setShowFollowPopup] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(item.is_following || false);
+  const [followLoading, setFollowLoading] = useState(false);
   
   const navigation = useNavigation();
   const scaleAnim = useRef(new Animated.Value(0.97)).current;
@@ -101,47 +104,48 @@ const CertificateList = ({ item, user_id, singleData = null }) => {
     fetchData();
   }, [user_id, item.page_id]);
 
-  // console.log("API Request Parameters:", {
-  //   // Basic request parameters
-  //   user_id,
-  //   item: {
-  //     challenge_id: item.challenge_id,
-  //     people_data_id: item.people_data_id,
-  //     page_id: item.page_id,
-  //     // Include any other item properties being used
-  //   },
-  //   // Like API endpoint and params
-  //   likeApi: {
-  //     endpoint: `${baseURL}/checkAlreadyLiked.php`,
-  //     params: {
-  //       challenge_id: item.challenge_id,
-  //       people_data_id: item.people_data_id,
-  //       user_id
-  //     }
-  //   },
-  //   // Movie API endpoint and params
-  //   movieApi: {
-  //     endpoint: `${baseURL}/getOneChallenge.php`,
-  //     params: {
-  //       id: item.page_id,
-  //       userId: user_id
-  //     }
-  //   },
-  //   // Challenge API endpoint and params
-  //   challengeApi: {
-  //     endpoint: `${baseURL}/getChallengeOne.php`,
-  //     params: {
-  //       challenge_id: item.challenge_id,
-  //       user_id
-  //     }
-  //   },
-  //   // Full URLs for verification
-  //   fullUrls: {
-  //     likeUrl: `${baseURL}/checkAlreadyLiked.php?challenge_id=${item.challenge_id}&people_data_id=${item.people_data_id}&user_id=${user_id}`,
-  //     movieUrl: `${baseURL}/getOneChallenge.php?id=${item.page_id}&userId=${user_id}`,
-  //     challengeUrl: `${baseURL}/getChallengeOne.php?challenge_id=${item.challenge_id}&user_id=${user_id}`
-  //   }
-  // });
+  const handleFollowPress = () => {
+    setShowFollowPopup(true);
+  };
+
+  const toggleFollow = async () => {
+    if (!user?.id) return;
+    
+    setFollowLoading(true);
+    try {
+      const response = await axios.get(
+        `${baseURL}/event-Follow.php?page_id=${item.page_id}&userId=${user.id}`
+      );
+      
+      if (response.status === 200) {
+        const newFollowStatus = !isFollowing;
+        setIsFollowing(newFollowStatus);
+        
+        // Update the parent component about the follow status change
+        if (onFollowUpdate) {
+          onFollowUpdate(item.page_id, newFollowStatus);
+        }
+        
+        Toast.show({
+          type: "success",
+          text1: newFollowStatus ? "Followed!" : "Unfollowed!",
+          text2: newFollowStatus 
+            ? `You are now following ${item.page_title}` 
+            : `You unfollowed ${item.page_title}`,
+        });
+      }
+    } catch (error) {
+      console.error("Error while following:", error);
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Could not update follow status. Please try again.",
+      });
+    } finally {
+      setFollowLoading(false);
+      setShowFollowPopup(false);
+    }
+  };
 
   const hideAlertFunction = () => {
     setShowAlert(false);
@@ -224,6 +228,18 @@ const CertificateList = ({ item, user_id, singleData = null }) => {
     setIsExpanded(!isExpanded);
   };
 
+  const truncateText = (text, limit) => {
+    if (!text) return '';
+    if (text?.length <= limit) return text;
+    return `${text.slice(0, limit).trim()}...`;
+  };
+
+  const pageData = {
+    title: item.page_title,
+    icon: item.icon,
+    type: item.page_type || 'Page'
+  };
+
   return (
     <Animated.View style={[
       styles.cardWrapper,
@@ -258,7 +274,38 @@ const CertificateList = ({ item, user_id, singleData = null }) => {
             
             <View style={styles.userInfo}>
               <Text style={styles.userName}>{item.name}</Text>
-              <Text style={styles.postDate}>{item.date}</Text>
+              <View style={styles.metadataRow}>
+                <Text style={styles.postDate}>{item.date}</Text>
+                {/* Status indicators */}
+                <View style={styles.statusContainer}>
+                  {item.is_now && (
+                    <View style={styles.nowBadge}>
+                      <MaterialIcons name="location-on" size={10} color="white" />
+                      <Text style={styles.nowText}>Now</Text>
+                    </View>
+                  )}
+                  
+                  {isFollowing ? (
+                    <TouchableOpacity 
+                      style={styles.followingBadge}
+                      onPress={handleFollowPress}
+                      activeOpacity={0.8}
+                    >
+                      <MaterialIcons name="check-circle" size={10} color="white" />
+                      <Text style={styles.followingText}>Following</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity 
+                      style={styles.followBadge}
+                      onPress={handleFollowPress}
+                      activeOpacity={0.8}
+                    >
+                      <MaterialIcons name="add-circle-outline" size={10} color="#4ECDC4" />
+                      <Text style={styles.followText}>Follow</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
             </View>
           </TouchableOpacity>
           
@@ -293,7 +340,7 @@ const CertificateList = ({ item, user_id, singleData = null }) => {
           >
             <MaterialCommunityIcons name="trophy-award" size={16} color="#6366f1" />
             <Text style={styles.achievementText}>
-              Completed the <Text style={styles.challengeTitle}>{item.challenge_title}</Text> challenge
+              Completed the <Text style={styles.challengeTitle}>{truncateText(item.challenge_title, 20)}</Text> challenge
             </Text>
           </LinearGradient>
         </View>
@@ -349,12 +396,10 @@ const CertificateList = ({ item, user_id, singleData = null }) => {
           
           <View style={styles.pageInfo}>
             <Text style={styles.pageName}>
-              {item.page_title}
+              {truncateText(item.page_title, 25)}
             </Text>
             <Text style={styles.challengeName}>
-              {item.challenge_title?.length > 25
-                ? `${item.challenge_title.substring(0, 25)}...`
-                : item.challenge_title}
+              {truncateText(item.challenge_title, 25)}
             </Text>
           </View>
         </TouchableOpacity>
@@ -401,6 +446,16 @@ const CertificateList = ({ item, user_id, singleData = null }) => {
           </TouchableOpacity>
         </View>
       </View>
+      
+      {/* Follow Popup */}
+      <FollowPopup
+        visible={showFollowPopup}
+        onClose={() => setShowFollowPopup(false)}
+        onConfirm={toggleFollow}
+        pageData={pageData}
+        isFollowing={isFollowing}
+        loading={followLoading}
+      />
       
       <AwesomeAlert
         show={showAlert}
@@ -480,17 +535,87 @@ const styles = StyleSheet.create({
   },
   userInfo: {
     marginLeft: wp(2.5),
+    flex: 1,
   },
   userName: {
     fontSize: hp(1.8),
     fontFamily: "raleway-bold",
     color: "#111827",
   },
+  metadataRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 4,
+  },
   postDate: {
     fontSize: hp(1.5),
     fontFamily: "raleway",
     color: "#6b7280",
-    marginTop: 2,
+  },
+  statusContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  nowBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FF5722",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    gap: 2,
+    shadowColor: "#FF5722",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  nowText: {
+    fontFamily: "raleway-bold",
+    fontSize: hp(1.1),
+    color: "white",
+  },
+  followingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#4CAF50",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    gap: 2,
+    shadowColor: "#4CAF50",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  followingText: {
+    fontFamily: "raleway-bold",
+    fontSize: hp(1.1),
+    color: "white",
+  },
+  followBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    borderWidth: 1,
+    borderColor: "#4ECDC4",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    gap: 2,
+    shadowColor: "#4ECDC4",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  followText: {
+    fontFamily: "raleway-bold",
+    fontSize: hp(1.1),
+    color: "#4ECDC4",
   },
   menuButton: {
     width: hp(4),

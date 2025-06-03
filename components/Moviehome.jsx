@@ -822,41 +822,10 @@ const Moviehome = ({ route }) => {
         const response = await axios.get(
           `${baseURL}/event-Follow.php?page_id=${movieId}&userId=${user.id}`
         );
+        console.log(response.data)
         setShowAlert(false);
 
-        if (isFollowing == false) {
-          Toast2.show(`You started following ${selectedMovie.title}`, {
-            duration: Toast2.durations.SHORT,
-            position: Toast2.positions.BOTTOM,
-            shadow: true,
-            animation: true,
-            hideOnPress: true,
-            delay: 0,
-            backgroundColor: "white",
-            textColor: "black",
-            containerStyle: {
-              backgroundColor: "white",
-              borderRadius: 50,
-              padding: 15,
-            },
-          });
-        } else {
-          Toast2.show(`You unfollowed ${selectedMovie.title}`, {
-            duration: Toast2.durations.SHORT,
-            position: Toast2.positions.BOTTOM,
-            shadow: true,
-            animation: true,
-            hideOnPress: true,
-            delay: 0,
-            backgroundColor: "white",
-            textColor: "black",
-            containerStyle: {
-              backgroundColor: "white",
-              borderRadius: 50,
-              padding: 15,
-            },
-          });
-        }
+     
 
         setIsFollowing((prevIsFollowing) => !prevIsFollowing);
       } catch (error) {
