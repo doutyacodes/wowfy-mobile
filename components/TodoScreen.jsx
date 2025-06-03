@@ -27,7 +27,7 @@ import { baseURL } from "../backend/baseData";
 import TopBar from "./AppComponents/TopBar";
 import TaskHomeCard from "./TaskHomeCard";
 import VerificationCard from "./VerificationCard"; // New component for verification cards
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const TodoScreen = () => {
   const navigation = useNavigation();
@@ -85,7 +85,7 @@ const TodoScreen = () => {
     refetch: refetchOngoing,
     isRefetching: isRefetchingOngoing,
   } = useQuery({
-    queryKey: ['ongoingTasks', user?.id],
+    queryKey: ["ongoingTasks", user?.id],
     queryFn: fetchOngoingTasks,
     enabled: !!user,
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -98,7 +98,7 @@ const TodoScreen = () => {
     refetch: refetchVerification,
     isRefetching: isRefetchingVerification,
   } = useQuery({
-    queryKey: ['verificationTasks', user?.id],
+    queryKey: ["verificationTasks", user?.id],
     queryFn: fetchVerificationTasks,
     enabled: !!user,
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -138,7 +138,9 @@ const TodoScreen = () => {
       ) : (
         <FlatList
           data={ongoingData}
-          keyExtractor={(item, index) => `ongoing-${item.challenge_id}-${index}`}
+          keyExtractor={(item, index) =>
+            `ongoing-${item.challenge_id}-${index}`
+          }
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -149,8 +151,8 @@ const TodoScreen = () => {
             />
           }
           ListEmptyComponent={
-            <EmptyListComponent 
-              message="No ongoing tasks found" 
+            <EmptyListComponent
+              message="No ongoing tasks found"
               icon="play-circle-outline"
             />
           }
@@ -163,39 +165,42 @@ const TodoScreen = () => {
 
   // Filter verification tasks by status
   const getVerificationTasksByStatus = () => {
-    console.log("All verification data:", verificationData);
-    
-    const underVerification = verificationData.filter(task => 
-      task.verification_status === 'under_verification' || 
-      task.verification_status === 'pending'
+    // console.log("All verification data:", verificationData);
+
+    const underVerification = verificationData.filter(
+      (task) =>
+        task.verification_status === "under_verification" ||
+        task.verification_status === "pending"
     );
-    const completed = verificationData.filter(task => 
-      task.verification_status === 'completed' || 
-      task.verification_status === 'approved'
+    const completed = verificationData.filter(
+      (task) =>
+        task.verification_status === "completed" ||
+        task.verification_status === "approved"
     );
-    const rejected = verificationData.filter(task => 
-      task.verification_status === 'rejected'
+    const rejected = verificationData.filter(
+      (task) => task.verification_status === "rejected"
     );
 
     console.log("Filtered verification tasks:", {
       underVerification: underVerification.length,
       completed: completed.length,
-      rejected: rejected.length
+      rejected: rejected.length,
     });
 
     return { underVerification, completed, rejected };
   };
 
   const VerificationRoute = () => {
-    const { underVerification, completed, rejected } = getVerificationTasksByStatus();
+    const { underVerification, completed, rejected } =
+      getVerificationTasksByStatus();
 
     return (
       <View style={styles.tabContent}>
         {isVerificationLoading ? (
           <ActivityIndicator size="large" color="#6366f1" />
         ) : verificationData.length === 0 ? (
-          <EmptyListComponent 
-            message="No verification tasks found" 
+          <EmptyListComponent
+            message="No verification tasks found"
             icon="checkmark-circle-outline"
           />
         ) : (
@@ -210,17 +215,34 @@ const TodoScreen = () => {
               />
             }
             data={[
-              { type: 'section', data: underVerification, title: 'Under Verification', status: 'locked' },
-              { type: 'section', data: completed, title: 'Completed Verification', status: 'completed' },
-              { type: 'section', data: rejected, title: 'Rejected Verification', status: 'rejected' }
+              {
+                type: "section",
+                data: underVerification,
+                title: "Under Verification",
+                status: "locked",
+              },
+              {
+                type: "section",
+                data: completed,
+                title: "Completed Verification",
+                status: "completed",
+              },
+              {
+                type: "section",
+                data: rejected,
+                title: "Rejected Verification",
+                status: "rejected",
+              },
             ]}
             keyExtractor={(item, index) => `verification-section-${index}`}
             renderItem={({ item: section }) => (
-              <VerificationSection 
+              <VerificationSection
                 title={section.title}
                 data={section.data}
                 status={section.status}
-                onTaskPress={(task) => handleVerificationTaskPress(task, section.status)}
+                onTaskPress={(task) =>
+                  handleVerificationTaskPress(task, section.status)
+                }
               />
             )}
           />
@@ -230,24 +252,26 @@ const TodoScreen = () => {
   };
 
   const handleVerificationTaskPress = (task, status) => {
-    if (status === 'rejected') {
-      // Show restart option for rejected tasks
-      navigation.navigate("RestartChallenge", {
-        challenge: task,
-        restartReason: task.rejection_reason || "Task was rejected"
+    // console.log("task", task.challenge_id);
+    // console.log("page_id", task.page_id);
+    if (status === "rejected") {
+      // // Show restart option for rejected tasks
+      navigation.navigate("ChallengesList", {
+        challenge: { challenge_id: task.challenge_id },
+        selectedMovie: task.selectedMovie,
       });
-    } else if (status === 'completed') {
-      // Show completion details
-      navigation.navigate("VerificationDetails", {
-        challenge: task,
-        type: "completed"
-      });
+    } else if (status === "completed") {
+      // // Show completion details
+      // navigation.navigate("VerificationDetails", {
+      //   challenge: task,
+      //   type: "completed"
+      // });
     } else {
       // Under verification - show waiting screen
-      navigation.navigate("VerificationDetails", {
-        challenge: task,
-        type: "waiting"
-      });
+      // navigation.navigate("VerificationDetails", {
+      //   challenge: task,
+      //   type: "waiting",
+      // });
     }
   };
 
@@ -269,7 +293,7 @@ const TodoScreen = () => {
             {route.title}
           </Text>
           {/* Add badge count for verification tab */}
-          {route.key === 'verification' && verificationData.length > 0 && (
+          {route.key === "verification" && verificationData.length > 0 && (
             <View style={styles.badgeCount}>
               <Text style={styles.badgeText}>{verificationData.length}</Text>
             </View>
@@ -305,19 +329,27 @@ const VerificationSection = ({ title, data, status, onTaskPress }) => {
 
   const getStatusIcon = () => {
     switch (status) {
-      case 'locked': return 'time-outline';
-      case 'completed': return 'checkmark-circle-outline';
-      case 'rejected': return 'close-circle-outline';
-      default: return 'help-circle-outline';
+      case "locked":
+        return "time-outline";
+      case "completed":
+        return "checkmark-circle-outline";
+      case "rejected":
+        return "close-circle-outline";
+      default:
+        return "help-circle-outline";
     }
   };
 
   const getStatusColor = () => {
     switch (status) {
-      case 'locked': return '#f59e0b';
-      case 'completed': return '#10b981';
-      case 'rejected': return '#ef4444';
-      default: return '#6b7280';
+      case "locked":
+        return "#f59e0b";
+      case "completed":
+        return "#10b981";
+      case "rejected":
+        return "#ef4444";
+      default:
+        return "#6b7280";
     }
   };
 
@@ -325,18 +357,20 @@ const VerificationSection = ({ title, data, status, onTaskPress }) => {
     <View style={styles.sectionContainer}>
       <View style={styles.sectionHeader}>
         <View style={styles.sectionTitleContainer}>
-          <Ionicons 
-            name={getStatusIcon()} 
-            size={hp(2)} 
-            color={getStatusColor()} 
+          <Ionicons
+            name={getStatusIcon()}
+            size={hp(2)}
+            color={getStatusColor()}
           />
           <Text style={styles.sectionTitle}>{title}</Text>
-          <View style={[styles.sectionBadge, { backgroundColor: getStatusColor() }]}>
+          <View
+            style={[styles.sectionBadge, { backgroundColor: getStatusColor() }]}
+          >
             <Text style={styles.sectionBadgeText}>{data.length}</Text>
           </View>
         </View>
       </View>
-      
+
       {data.map((task, index) => (
         <VerificationCard
           key={`${status}-${task.challenge_id}-${index}`}
@@ -370,8 +404,8 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   tabLabelContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: wp(2),
   },
   tabLabel: {
@@ -384,18 +418,18 @@ const styles = StyleSheet.create({
     color: "#111827",
   },
   badgeCount: {
-    backgroundColor: '#ef4444',
+    backgroundColor: "#ef4444",
     borderRadius: wp(2.5),
     minWidth: wp(5),
     height: wp(5),
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingHorizontal: wp(1),
   },
   badgeText: {
-    color: 'white',
+    color: "white",
     fontSize: hp(1.2),
-    fontFamily: 'raleway-bold',
+    fontFamily: "raleway-bold",
   },
   tabContent: {
     flex: 1,
@@ -424,14 +458,14 @@ const styles = StyleSheet.create({
     marginBottom: hp(1.5),
   },
   sectionTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: wp(2),
   },
   sectionTitle: {
     fontSize: hp(2),
-    fontFamily: 'raleway-bold',
-    color: '#1f2937',
+    fontFamily: "raleway-bold",
+    color: "#1f2937",
     flex: 1,
   },
   sectionBadge: {
@@ -439,12 +473,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: wp(2),
     paddingVertical: hp(0.3),
     minWidth: wp(6),
-    alignItems: 'center',
+    alignItems: "center",
   },
   sectionBadgeText: {
-    color: 'white',
+    color: "white",
     fontSize: hp(1.3),
-    fontFamily: 'raleway-bold',
+    fontFamily: "raleway-bold",
   },
 });
 

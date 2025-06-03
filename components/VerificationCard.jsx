@@ -12,54 +12,80 @@ import { Ionicons } from "@expo/vector-icons";
 
 const VerificationCard = ({ item, status, onPress }) => {
   const navigation = useNavigation();
-  const formattedDate = moment(item.submitted_date || item.created_date).fromNow();
-  
+  const formattedDate = moment(
+    item.submitted_date || item.created_date
+  ).fromNow();
+
   // Get status-specific styling and content
   const getStatusConfig = () => {
     switch (status) {
-      case 'locked':
+      case "locked":
         return {
-          icon: 'time-outline',
-          color: '#f59e0b',
-          bgColor: '#fef3c7',
-          borderColor: '#f59e0b',
-          title: 'Under Review',
-          subtitle: 'Your submission is being verified',
-          buttonText: 'View Status',
-          buttonIcon: 'eye-outline',
+          icon: "time-outline",
+          color: "#f59e0b",
+          bgColor: "#fef3c7",
+          borderColor: "#f59e0b",
+          title: "Under Review",
+          subtitle: "Your submission is being verified",
+          buttonText: "View Status",
+          buttonIcon: "eye-outline",
         };
-      case 'completed':
+      case "completed":
+        // ENHANCED: Dynamic button based on challenge progress
+        const canContinue = item.can_continue_challenge;
+        const challengeCompleted = item.challenge_completed;
+
+        let buttonText, buttonIcon, subtitle;
+
+        if (challengeCompleted) {
+          buttonText = "Challenge Completed";
+          buttonIcon = "trophy-outline";
+          subtitle = "You have completed all tasks in this challenge!";
+        } else if (canContinue) {
+          buttonText = "Continue Challenge";
+          buttonIcon = "play-circle-outline";
+          subtitle = `${item.remaining_tasks} task(s) remaining`;
+        } else if (!item.is_challenge_active) {
+          buttonText = "Challenge Ended";
+          buttonIcon = "time-outline";
+          subtitle = "Challenge time has expired";
+        } else {
+          buttonText = "View Details";
+          buttonIcon = "document-text-outline";
+          subtitle = "Task completed successfully";
+        }
+
         return {
-          icon: 'checkmark-circle',
-          color: '#10b981',
-          bgColor: '#d1fae5',
-          borderColor: '#10b981',
-          title: 'Verified',
-          subtitle: 'Task completed successfully',
-          buttonText: 'View Details',
-          buttonIcon: 'document-text-outline',
+          icon: "checkmark-circle",
+          color: "#10b981",
+          bgColor: "#d1fae5",
+          borderColor: "#10b981",
+          title: "Verified",
+          subtitle: subtitle,
+          buttonText: buttonText,
+          buttonIcon: buttonIcon,
         };
-      case 'rejected':
+      case "rejected":
         return {
-          icon: 'close-circle',
-          color: '#ef4444',
-          bgColor: '#fee2e2',
-          borderColor: '#ef4444',
-          title: 'Rejected',
-          subtitle: item.rejection_reason || 'Task needs to be redone',
-          buttonText: 'Restart Task',
-          buttonIcon: 'refresh-outline',
+          icon: "close-circle",
+          color: "#ef4444",
+          bgColor: "#fee2e2",
+          borderColor: "#ef4444",
+          title: "Rejected",
+          subtitle: item.rejection_reason || "Task needs to be redone",
+          buttonText: "Restart Task",
+          buttonIcon: "refresh-outline",
         };
       default:
         return {
-          icon: 'help-circle-outline',
-          color: '#6b7280',
-          bgColor: '#f3f4f6',
-          borderColor: '#6b7280',
-          title: 'Unknown',
-          subtitle: 'Status unknown',
-          buttonText: 'View',
-          buttonIcon: 'eye-outline',
+          icon: "help-circle-outline",
+          color: "#6b7280",
+          bgColor: "#f3f4f6",
+          borderColor: "#6b7280",
+          title: "Unknown",
+          subtitle: "Status unknown",
+          buttonText: "View",
+          buttonIcon: "eye-outline",
         };
     }
   };
@@ -84,13 +110,36 @@ const VerificationCard = ({ item, status, onPress }) => {
     return "checkmark-circle-outline";
   };
 
+  // Handle press with enhanced logic
+  const handlePress = () => {
+    if (status === "completed") {
+      if (item.challenge_completed) {
+        // Navigate to challenge completion screen
+        // navigation.navigate("ChallengeCompleted", {
+        //   challenge: item,
+        //   totalTasks: item.total_tasks,
+        //   completedTasks: item.completed_tasks
+        // });
+      } else if (item.can_continue_challenge) {
+        // Navigate to continue challenge
+        navigation.navigate("ChallengesList", {
+          challenge: { challenge_id: item.challenge_id },
+        selectedMovie: item.selectedMovie,
+        });
+      } else {
+        // Default view details
+        onPress && onPress();
+      }
+    } else {
+      // For other statuses, use the original onPress
+      onPress && onPress();
+    }
+  };
+
   return (
     <TouchableOpacity
-      style={[
-        styles.cardContainer,
-        { borderColor: config.borderColor }
-      ]}
-      onPress={onPress}
+      style={[styles.cardContainer, { borderColor: config.borderColor }]}
+      onPress={handlePress}
       activeOpacity={0.9}
     >
       {/* Card Header with Event Brand */}
@@ -105,7 +154,7 @@ const VerificationCard = ({ item, status, onPress }) => {
             <Text style={styles.timestamp}>{formattedDate}</Text>
           </View>
         </View>
-        
+
         {/* Task Type Badge */}
         <LinearGradient
           colors={getBadgeColor()}
@@ -115,10 +164,15 @@ const VerificationCard = ({ item, status, onPress }) => {
         >
           <Ionicons name={getTypeIcon()} size={hp(1.5)} color="white" />
           <Text style={styles.badgeText}>
-            {item.frequency === "food" ? "Food" : 
-             item.frequency === "experience" ? "Experience" :
-             item.frequency === "bootcamp" ? "Bootcamp" :
-             item.frequency === "challenges" ? "Challenge" : "Task"}
+            {item.frequency === "food"
+              ? "Food"
+              : item.frequency === "experience"
+              ? "Experience"
+              : item.frequency === "bootcamp"
+              ? "Bootcamp"
+              : item.frequency === "challenges"
+              ? "Challenge"
+              : "Task"}
           </Text>
         </LinearGradient>
       </View>
@@ -130,28 +184,42 @@ const VerificationCard = ({ item, status, onPress }) => {
           style={styles.taskImage}
           resizeMode="cover"
         />
-        
+
         {/* Black Overlay for better text readability */}
         <View style={styles.blackOverlay} />
-        
+
         {/* Status Overlay */}
         <View style={styles.statusOverlay}>
           <View style={[styles.statusIcon, { backgroundColor: config.color }]}>
             <Ionicons name={config.icon} size={hp(3)} color="white" />
           </View>
-          <Text style={[styles.statusTitle, { color: 'white' }]}>{config.title}</Text>
+          <Text style={[styles.statusTitle, { color: "white" }]}>
+            {config.title}
+          </Text>
           <Text style={styles.statusSubtitle}>{config.subtitle}</Text>
         </View>
 
         {/* Verification timestamp */}
-        {status === 'locked' && (
+        {status === "locked" && (
           <View style={styles.timestampBadge}>
             <Ionicons name="time-outline" size={hp(1.3)} color="white" />
             <Text style={styles.timestampText}>
-              {moment(item.submitted_date).format('MMM DD, HH:mm')}
+              {moment(item.submitted_date).format("MMM DD, HH:mm")}
             </Text>
           </View>
         )}
+
+        {/* ENHANCED: Challenge Progress Badge for completed tasks */}
+        {status === "completed" &&
+          !item.challenge_completed &&
+          item.can_continue_challenge && (
+            <View style={styles.progressBadge}>
+              <Ionicons name="play-circle" size={hp(1.3)} color="white" />
+              <Text style={styles.progressText}>
+                {item.completed_tasks}/{item.total_tasks} Tasks
+              </Text>
+            </View>
+          )}
       </View>
 
       {/* Task Details */}
@@ -172,49 +240,84 @@ const VerificationCard = ({ item, status, onPress }) => {
             <Text style={styles.infoLabel}>Reward Points:</Text>
             <Text style={styles.infoValue}>{item.reward_points} pts</Text>
           </View>
-          
-          {status === 'rejected' && item.rejection_reason && (
+
+          {/* ENHANCED: Show challenge progress for completed tasks */}
+          {status === "completed" && (
             <View style={styles.infoRow}>
-              <Ionicons name="information-circle-outline" size={hp(1.6)} color="#ef4444" />
-              <Text style={[styles.infoLabel, { color: '#ef4444' }]}>Reason:</Text>
-              <Text style={[styles.infoValue, { color: '#ef4444', flex: 1 }]} numberOfLines={2}>
+              <Ionicons name="list-outline" size={hp(1.6)} color="#10b981" />
+              <Text style={[styles.infoLabel, { color: "#10b981" }]}>
+                Challenge Progress:
+              </Text>
+              <Text style={[styles.infoValue, { color: "#10b981" }]}>
+                {item.completed_tasks}/{item.total_tasks} completed
+              </Text>
+            </View>
+          )}
+
+          {status === "rejected" && item.rejection_reason && (
+            <View style={styles.infoRow}>
+              <Ionicons
+                name="information-circle-outline"
+                size={hp(1.6)}
+                color="#ef4444"
+              />
+              <Text style={[styles.infoLabel, { color: "#ef4444" }]}>
+                Reason:
+              </Text>
+              <Text
+                style={[styles.infoValue, { color: "#ef4444", flex: 1 }]}
+                numberOfLines={2}
+              >
                 {item.rejection_reason}
               </Text>
             </View>
           )}
-          
-          {status === 'completed' && item.completion_date && (
+
+          {status === "completed" && item.completion_date && (
             <View style={styles.infoRow}>
-              <Ionicons name="calendar-outline" size={hp(1.6)} color="#10b981" />
-              <Text style={[styles.infoLabel, { color: '#10b981' }]}>Completed:</Text>
-              <Text style={[styles.infoValue, { color: '#10b981' }]}>
-                {moment(item.completion_date).format('MMM DD, YYYY')}
+              <Ionicons
+                name="calendar-outline"
+                size={hp(1.6)}
+                color="#10b981"
+              />
+              <Text style={[styles.infoLabel, { color: "#10b981" }]}>
+                Completed:
+              </Text>
+              <Text style={[styles.infoValue, { color: "#10b981" }]}>
+                {moment(item.completion_date).format("MMM DD, YYYY")}
               </Text>
             </View>
           )}
-          
-          {status === 'locked' && (
+
+          {status === "locked" && (
             <View style={styles.infoRow}>
-              <Ionicons name="hourglass-outline" size={hp(1.6)} color="#f59e0b" />
-              <Text style={[styles.infoLabel, { color: '#f59e0b' }]}>Expected:</Text>
-              <Text style={[styles.infoValue, { color: '#f59e0b' }]}>
+              <Ionicons
+                name="hourglass-outline"
+                size={hp(1.6)}
+                color="#f59e0b"
+              />
+              <Text style={[styles.infoLabel, { color: "#f59e0b" }]}>
+                Expected:
+              </Text>
+              <Text style={[styles.infoValue, { color: "#f59e0b" }]}>
                 24-48 hours
               </Text>
             </View>
           )}
         </View>
       </View>
-      
+
       {/* Action Button */}
       <LinearGradient
-        colors={[config.color, config.color + 'CC']}
+        colors={[config.color, config.color + "CC"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={styles.actionButton}
       >
         <Ionicons name={config.buttonIcon} size={hp(2)} color="white" />
         <Text style={styles.actionButtonText}>{config.buttonText}</Text>
-        {status === 'rejected' && (
+        {(status === "rejected" ||
+          (status === "completed" && item.can_continue_challenge)) && (
           <Ionicons name="arrow-forward" size={hp(1.8)} color="white" />
         )}
       </LinearGradient>
@@ -286,14 +389,13 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  // NEW: Black overlay for better text readability
   blackOverlay: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.5)", // 50% black overlay
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   statusOverlay: {
     position: "absolute",
@@ -312,7 +414,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: hp(0.5),
-    // Add shadow for better visibility
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
@@ -323,19 +424,17 @@ const styles = StyleSheet.create({
     fontSize: hp(2),
     fontFamily: "raleway-bold",
     textAlign: "center",
-    // Add text shadow for better readability
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowColor: "rgba(0, 0, 0, 0.8)",
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
   },
   statusSubtitle: {
     fontSize: hp(1.5),
     fontFamily: "raleway",
-    color: "white", // Changed to white for better contrast
+    color: "white",
     textAlign: "center",
     paddingHorizontal: wp(4),
-    // Add text shadow for better readability
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowColor: "rgba(0, 0, 0, 0.8)",
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
   },
@@ -343,7 +442,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: hp(1),
     right: wp(3),
-    backgroundColor: "rgba(0,0,0,0.8)", // Made darker for better contrast
+    backgroundColor: "rgba(0,0,0,0.8)",
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: wp(2),
@@ -352,6 +451,24 @@ const styles = StyleSheet.create({
     gap: wp(1),
   },
   timestampText: {
+    color: "white",
+    fontSize: hp(1.2),
+    fontFamily: "raleway-semibold",
+  },
+  // ENHANCED: New progress badge
+  progressBadge: {
+    position: "absolute",
+    top: hp(1),
+    left: wp(3),
+    backgroundColor: "rgba(16, 185, 129, 0.9)", // Green with transparency
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: wp(2),
+    paddingVertical: hp(0.5),
+    borderRadius: hp(1),
+    gap: wp(1),
+  },
+  progressText: {
     color: "white",
     fontSize: hp(1.2),
     fontFamily: "raleway-semibold",

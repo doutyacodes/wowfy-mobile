@@ -465,6 +465,20 @@ export default function VideoTesting({ route }) {
                 loop={false}
               />
             </View>
+                <TouchableOpacity
+                            style={[
+                              styles.verificationButton,
+                              { backgroundColor: "#4ADE80" },
+                            ]}
+                            onPress={() =>
+                              navigation.navigate("TodoScreen", {
+                                initialTab: "verification",
+                              })
+                            }
+                          >
+                            <Ionicons name="clipboard-outline" size={20} color="white" />
+                            <Text style={styles.buttonText}>View Verification Status</Text>
+                          </TouchableOpacity>
             <TouchableOpacity
               style={styles.modalButton}
               onPress={() => handleCompletion()}
@@ -492,6 +506,20 @@ export default function VideoTesting({ route }) {
                 loop={false}
               />
             </View>
+                <TouchableOpacity
+                            style={[
+                              styles.verificationButton,
+                              { backgroundColor: "#4ADE80" },
+                            ]}
+                            onPress={() =>
+                              navigation.navigate("TodoScreen", {
+                                initialTab: "verification",
+                              })
+                            }
+                          >
+                            <Ionicons name="clipboard-outline" size={20} color="white" />
+                            <Text style={styles.buttonText}>View Verification Status</Text>
+                          </TouchableOpacity>
             <TouchableOpacity
               style={styles.modalButton}
               onPress={() => navigation.dispatch(StackActions.popToTop())}
@@ -867,5 +895,16 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "bold",
     fontSize: 16,
+  },
+    verificationButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    width: "100%",
+    justifyContent: "center",
+    marginBottom: 12,
+    gap: 8,
   },
 });

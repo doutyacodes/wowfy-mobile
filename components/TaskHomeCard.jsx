@@ -46,6 +46,7 @@ const TaskHomeCard = ({ item }) => {
           type: item.frequency,
         });
       } else {
+        console.log("item",item)
         navigation.navigate("ChallengesList", {
           challenge: item.challenge,
           selectedMovie: item.selectedMovie,

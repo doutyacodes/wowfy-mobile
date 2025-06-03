@@ -27,7 +27,8 @@ const ChallengesList = ({ route }) => {
   const navigation = useNavigation();
   const { selectedMovie, challenge } = route.params;
   const [user, setUser] = useState(null);
-
+// console.log("selectedMovie",selectedMovie)
+// console.log("challenge",challenge)
   // Fetch user data from AsyncStorage
   useEffect(() => {
     const fetchUser = async () => {

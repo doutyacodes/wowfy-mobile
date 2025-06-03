@@ -468,7 +468,7 @@ const BuzzwallScreen = () => {
                         {" "}
                         {item.title?.length > 10
                           ? item.title.slice(0, 10) + "..."
-                          : item.title}
+                          : item.title}{ " (Now)"}
                       </Text>
                     </TouchableOpacity>
                   );

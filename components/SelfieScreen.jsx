@@ -46,12 +46,12 @@ export default function SelfieScreen({ route }) {
   const [user, setUser] = useState(null);
   const navigation = useNavigation();
   const cameraRef = useRef(null);
-  
+
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  
+
   // Start pulse animation for capture button
   useEffect(() => {
     Animated.loop(
@@ -71,7 +71,7 @@ export default function SelfieScreen({ route }) {
       ])
     ).start();
   }, []);
-  
+
   // Start fade animation when component mounts
   useEffect(() => {
     Animated.parallel([
@@ -86,12 +86,12 @@ export default function SelfieScreen({ route }) {
         useNativeDriver: true,
       }),
     ]).start();
-    
+
     // Hide guide after 3 seconds
     const timer = setTimeout(() => {
       setShowGuide(false);
     }, 3000);
-    
+
     return () => clearTimeout(timer);
   }, []);
 
@@ -111,23 +111,23 @@ export default function SelfieScreen({ route }) {
 
     fetchUser();
   }, []);
-  
+
   const showModal = () => {
     setVisible(true);
   };
-  
+
   const showModal2 = () => {
     setVisible2(true);
   };
-  
+
   const hideModal = () => setVisible(false);
   const hideModal2 = () => setVisible2(false);
-  
+
   if (!permission) {
     // Camera permissions are still loading
     return <View />;
   }
-  
+
   const { userTaskId, tasks, userSId, challenge } = route.params ?? {};
 
   const takePicture = async () => {
@@ -137,7 +137,7 @@ export default function SelfieScreen({ route }) {
           quality: 0.8,
           skipProcessing: false,
         });
-        
+
         // Create animation when photo is captured
         Animated.sequence([
           Animated.timing(fadeAnim, {
@@ -151,7 +151,7 @@ export default function SelfieScreen({ route }) {
             useNativeDriver: true,
           }),
         ]).start();
-        
+
         setCapturedPhoto(photo);
       } catch (error) {
         console.error("Error taking picture:", error);
@@ -163,17 +163,17 @@ export default function SelfieScreen({ route }) {
   function toggleCameraType() {
     setFacing((current) => (current == "back" ? "front" : "back"));
   }
-  
+
   function toggleFlash() {
     setFlashMode((current) => (current == "off" ? "on" : "off"));
   }
-  
+
   const submitSave = async () => {
     if (!capturedPhoto) {
       Alert.alert("Oops!", "You need to take a photo first! 📸");
       return;
     }
-    
+
     setIsLoading(true);
 
     try {
@@ -208,13 +208,13 @@ export default function SelfieScreen({ route }) {
       } else {
         console.error("Unexpected status code:", response.status);
       }
-      
+
       const checkNext = async () => {
         try {
           const response = await axios.get(
             `${baseURL}/checkNextTaskExist.php?task_id=${tasks.task_id}&challenge_id=${tasks.challenge_id}&user_id=${user?.id}`
           );
-          
+
           if (response.data.next == "yes") {
             setNewChallenges(response.data);
             setNewSteps(response.data.steps);
@@ -233,10 +233,10 @@ export default function SelfieScreen({ route }) {
                   },
                 }
               );
-              
+
               setNewUserTaskId(response2.data.task.userTaskId);
               setNewDuration(response.data.duration);
-              
+
               if (response.data.task_type == "videoCapture") {
                 setNavRoute("VideoTesting");
               }
@@ -246,7 +246,7 @@ export default function SelfieScreen({ route }) {
               if (response.data.task_type == "stepCounter") {
                 setNavRoute("AcceleroMeterScreen");
               }
-              
+
               showModal();
             } catch (error) {
               console.error("Error creating user tasks:", error);
@@ -259,7 +259,7 @@ export default function SelfieScreen({ route }) {
           throw error;
         }
       };
-      
+
       if (tasks.multiple == "yes") {
         checkNext();
       } else {
@@ -272,7 +272,7 @@ export default function SelfieScreen({ route }) {
       setIsLoading(false);
     }
   };
-  
+
   const handleCompletion = () => {
     navigation.replace("EntryCard", {
       navRoute: navRoute,
@@ -285,7 +285,7 @@ export default function SelfieScreen({ route }) {
       duration: newDuration,
     });
   };
-  
+
   return (
     <PaperProvider>
       <Portal>
@@ -304,16 +304,31 @@ export default function SelfieScreen({ route }) {
                 autoPlay
                 loop
               />
-              
+
               <Text style={styles.successTitle}>Challenge Completed!</Text>
-              <Text style={styles.successSubtitle}>Great job! Ready for your next task?</Text>
-              
-              <TouchableOpacity 
+              <Text style={styles.successSubtitle}>
+                Great job! Ready for your next task?
+              </Text>
+              <TouchableOpacity
+                style={[
+                  styles.verificationButton,
+                  { backgroundColor: "#4ADE80" },
+                ]}
+                onPress={() =>
+                  navigation.navigate("TodoScreen", {
+                    initialTab: "verification",
+                  })
+                }
+              >
+                <Ionicons name="clipboard-outline" size={20} color="white" />
+                <Text style={styles.buttonText}>View Verification Status</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
                 style={styles.successButton}
                 onPress={handleCompletion}
               >
                 <LinearGradient
-                  colors={['#4A80F0', '#1A53B0']}
+                  colors={["#4A80F0", "#1A53B0"]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.gradientButton}
@@ -325,7 +340,7 @@ export default function SelfieScreen({ route }) {
             </View>
           </View>
         </Modal>
-        
+
         {/* Modal for Challenge Completion */}
         <Modal
           visible={visible2}
@@ -341,16 +356,18 @@ export default function SelfieScreen({ route }) {
                 autoPlay
                 loop
               />
-              
+
               <Text style={styles.successTitle}>Congratulations!</Text>
-              <Text style={styles.successSubtitle}>You've completed all the challenges</Text>
-              
-              <TouchableOpacity 
+              <Text style={styles.successSubtitle}>
+                You've completed all the challenges
+              </Text>
+
+              <TouchableOpacity
                 style={styles.successButton}
                 onPress={() => navigation.dispatch(StackActions.popToTop())}
               >
                 <LinearGradient
-                  colors={['#4A80F0', '#1A53B0']}
+                  colors={["#4A80F0", "#1A53B0"]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.gradientButton}
@@ -366,29 +383,29 @@ export default function SelfieScreen({ route }) {
 
       <SafeAreaView style={styles.container}>
         <StatusBar style="light" />
-        
+
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
             <Ionicons name="arrow-back" size={24} color="white" />
           </TouchableOpacity>
-          
+
           <Text style={styles.headerTitle}>Take a Photo</Text>
-          
+
           <View style={styles.placeholder}></View>
         </View>
 
         {/* Camera View */}
-        <Animated.View 
+        <Animated.View
           style={[
-            styles.cameraContainer, 
-            { 
+            styles.cameraContainer,
+            {
               opacity: fadeAnim,
-              transform: [{ scale: scaleAnim }] 
-            }
+              transform: [{ scale: scaleAnim }],
+            },
           ]}
         >
           {!permission.granted ? (
@@ -397,11 +414,13 @@ export default function SelfieScreen({ route }) {
               <Text style={styles.permissionText}>
                 We need camera access to take photos
               </Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.permissionButton}
                 onPress={requestPermission}
               >
-                <Text style={styles.permissionButtonText}>Grant Permission</Text>
+                <Text style={styles.permissionButtonText}>
+                  Grant Permission
+                </Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -412,20 +431,28 @@ export default function SelfieScreen({ route }) {
                     source={{ uri: capturedPhoto.uri }}
                     style={[
                       styles.preview,
-                      {transform: [{ scaleX: facing == "front" ? -1 : 1 }]}
+                      { transform: [{ scaleX: facing == "front" ? -1 : 1 }] },
                     ]}
                   />
-                  
+
                   {/* Overlay with buttons */}
-                  <BlurView style={styles.previewOverlay} intensity={30} tint="dark">
-                    <TouchableOpacity 
+                  <BlurView
+                    style={styles.previewOverlay}
+                    intensity={30}
+                    tint="dark"
+                  >
+                    <TouchableOpacity
                       style={styles.previewButton}
                       onPress={() => setCapturedPhoto(null)}
                     >
-                      <Ionicons name="close-circle" size={62} color="rgba(255,255,255,0.9)" />
+                      <Ionicons
+                        name="close-circle"
+                        size={62}
+                        color="rgba(255,255,255,0.9)"
+                      />
                     </TouchableOpacity>
-                    
-                    <TouchableOpacity 
+
+                    <TouchableOpacity
                       style={styles.previewButton}
                       onPress={submitSave}
                       disabled={isLoading}
@@ -433,7 +460,11 @@ export default function SelfieScreen({ route }) {
                       {isLoading ? (
                         <ActivityIndicator size="large" color="white" />
                       ) : (
-                        <Ionicons name="checkmark-circle" size={75} color="rgba(255,255,255,0.9)" />
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={75}
+                          color="rgba(255,255,255,0.9)"
+                        />
                       )}
                     </TouchableOpacity>
                   </BlurView>
@@ -446,7 +477,7 @@ export default function SelfieScreen({ route }) {
                     ref={cameraRef}
                     flashMode={flashMode}
                   />
-                  
+
                   {/* Camera UI Overlay */}
                   <View style={styles.cameraControls}>
                     {/* Top controls */}
@@ -461,44 +492,46 @@ export default function SelfieScreen({ route }) {
                           color="white" 
                         />
                       </TouchableOpacity> */}
-                      
+
                       {showGuide && (
-                        <Animated.View 
-                          style={[
-                            styles.guideContainer,
-                            {opacity: fadeAnim}
-                          ]}
+                        <Animated.View
+                          style={[styles.guideContainer, { opacity: fadeAnim }]}
                         >
                           <Text style={styles.guideText}>
-                            Position yourself in the frame and tap the button to capture
+                            Position yourself in the frame and tap the button to
+                            capture
                           </Text>
                         </Animated.View>
                       )}
                     </View>
-                    
+
                     {/* Bottom controls */}
                     <View style={styles.bottomControls}>
                       <View style={styles.bottomControlsInner}>
                         <View style={styles.spacer} />
-                        
-                        <Animated.View 
+
+                        <Animated.View
                           style={{
-                            transform: [{scale: pulseAnim}]
+                            transform: [{ scale: pulseAnim }],
                           }}
                         >
-                          <TouchableOpacity 
+                          <TouchableOpacity
                             style={styles.captureButton}
                             onPress={takePicture}
                           >
                             <View style={styles.captureButtonInner} />
                           </TouchableOpacity>
                         </Animated.View>
-                        
-                        <TouchableOpacity 
+
+                        <TouchableOpacity
                           style={styles.flipButton}
                           onPress={toggleCameraType}
                         >
-                          <Ionicons name="camera-reverse" size={30} color="white" />
+                          <Ionicons
+                            name="camera-reverse"
+                            size={30}
+                            color="white"
+                          />
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -516,12 +549,12 @@ export default function SelfieScreen({ route }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: "#000",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 10,
@@ -530,22 +563,22 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   headerTitle: {
-    color: 'white',
+    color: "white",
     fontSize: hp(2.5),
-    fontFamily: 'raleway-bold',
+    fontFamily: "raleway-bold",
   },
   placeholder: {
     width: 40,
   },
   cameraContainer: {
     flex: 1,
-    overflow: 'hidden',
-    position: 'relative',
+    overflow: "hidden",
+    position: "relative",
     borderRadius: 20,
     margin: 10,
   },
@@ -553,47 +586,47 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cameraControls: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   topControls: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     padding: 16,
-    alignItems: 'center',
+    alignItems: "center",
   },
   controlButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   guideContainer: {
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
     borderRadius: 8,
     padding: 10,
     marginLeft: 10,
-    maxWidth: '80%',
+    maxWidth: "80%",
   },
   guideText: {
-    color: 'white',
+    color: "white",
     fontSize: hp(1.8),
-    fontFamily: 'raleway',
-    textAlign: 'center',
+    fontFamily: "raleway",
+    textAlign: "center",
   },
   bottomControls: {
     padding: 20,
   },
   bottomControlsInner: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   spacer: {
     width: 50,
@@ -602,89 +635,89 @@ const styles = StyleSheet.create({
     width: hp(9),
     height: hp(9),
     borderRadius: hp(4.5),
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
     borderWidth: 3,
-    borderColor: 'white',
+    borderColor: "white",
   },
   captureButtonInner: {
     width: hp(7),
     height: hp(7),
     borderRadius: hp(3.5),
-    backgroundColor: 'white',
+    backgroundColor: "white",
   },
   flipButton: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   previewContainer: {
     flex: 1,
-    position: 'relative',
+    position: "relative",
   },
   preview: {
     flex: 1,
     borderRadius: 20,
   },
   previewOverlay: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
     height: 120,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
     paddingHorizontal: 40,
   },
   previewButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   permissionContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#333',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#333",
     borderRadius: 20,
     padding: 20,
   },
   permissionText: {
-    color: 'white',
+    color: "white",
     fontSize: hp(2),
-    fontFamily: 'raleway-medium',
-    textAlign: 'center',
+    fontFamily: "raleway-medium",
+    textAlign: "center",
     marginVertical: 20,
   },
   permissionButton: {
-    backgroundColor: '#4A80F0',
+    backgroundColor: "#4A80F0",
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 10,
     marginTop: 20,
   },
   permissionButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: hp(2),
-    fontFamily: 'raleway-bold',
+    fontFamily: "raleway-bold",
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   successModal: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 20,
     padding: 20,
-    width: '85%',
-    alignItems: 'center',
-    shadowColor: '#000',
+    width: "85%",
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 10,
@@ -699,33 +732,44 @@ const styles = StyleSheet.create({
   },
   successTitle: {
     fontSize: hp(3),
-    fontFamily: 'raleway-bold',
-    color: '#4A80F0',
+    fontFamily: "raleway-bold",
+    color: "#4A80F0",
     marginTop: 10,
   },
   successSubtitle: {
     fontSize: hp(2),
-    fontFamily: 'raleway',
-    color: '#666',
-    textAlign: 'center',
+    fontFamily: "raleway",
+    color: "#666",
+    textAlign: "center",
     marginTop: 10,
     marginBottom: 20,
   },
   successButton: {
-    width: '100%',
+    width: "100%",
     marginTop: 10,
   },
   gradientButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 15,
     borderRadius: 12,
   },
   buttonText: {
-    color: 'white',
+    color: "white",
     fontSize: hp(2),
-    fontFamily: 'raleway-bold',
+    fontFamily: "raleway-bold",
     marginRight: 8,
+  },
+  verificationButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    width: "100%",
+    justifyContent: "center",
+    marginBottom: 12,
+    gap: 8,
   },
 });
